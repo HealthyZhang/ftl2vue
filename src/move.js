@@ -3,33 +3,38 @@ function moveScript() {
   // let scriptArr = ftlContent.match(/<script(\S|\s(?!(<script|src)))*<\/script>/g)
 
   let scriptArr1 = ftlContent.match(/<script>(\S|\s(?!(<script|src)))*<\/script>/g);
-  let mtd1 = ''
-  scriptArr1.forEach(string => {
+  let mtd1 = '';
+  scriptArr1 && scriptArr1.forEach(string => {
     mtd1 += string.substring(8, string.length - 9)
   });
   vueScript = vueScript.replace(/mtd1/g, mtd1)
 
   let scriptArr2 = ftlContent.match(/<script\stype(\S|\s(?!(<script|src)))*<\/script>/g);
   let mtd2 = ''
-  scriptArr2.forEach(string => {
+  scriptArr2 && scriptArr2.forEach(string => {
     mtd2 += string.substring(32, string.length - 9)
   });
   vueScript = vueScript.replace(/mtd2/g, mtd2)
-  toVueFile()
-  // console.log(scriptArr2.length)
 }
 
 
 function moveStyle() {
-  const slength = ftlContent.match(/<style/g).length;
-  if (slength > 1) {
-    console.log("自动移动style失败，请手动进行赋值！涉及文件路径：", 'waiting complete！');
-    return;
+  // const slength = ftlContent.match(/<style/g).length;
+  // if (slength > 1) {
+  //   console.log("自动移动style失败，请手动进行复制！涉及文件路径：", vuePath);
+  //   return;
+  // }
+  // ftlStyleArr = ftlContent.match(/<style(\d|\D)*<\/style>/g)
+  let ftlStyleArr = ftlContent.match(/<style(\S|(\s(?!<style)))*<\/style>/g)
+  let styleString;
+  try {
+    styleString = ftlStyleArr.join('\r\n');
+    styleString = styleString.replace(/<style>|<\/style>|<style type="text\/css">/g, '')
+  } catch (e) {
+    console.log('moveStyleerr');
   }
-  ftlStyleArr = ftlContent.match(/<style(\d|\D)*<\/style>/g)
-  // console.log(ftlStyleArr)
-  vueStyle = vueStyle.replace('</style>', ftlStyleArr[0].substring(23));
-  toVueFile()
+  vueStyle = vueStyle.replace('stl', styleString);
+  toVueFile(vuePath)
 }
 
 
