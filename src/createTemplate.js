@@ -40,3 +40,5 @@ function createVueTemplate() {
     ' ' +
     ' </style>'
 }
+
+module.exports = createVueTemplate;

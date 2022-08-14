@@ -31,3 +31,38 @@ function moveStyle() {
   vueStyle = vueStyle.replace('</style>', ftlStyleArr[0].substring(23));
   toVueFile()
 }
+
+
+function moveHtml() {
+  let html = ftlContent.match(/<body>(\d|\D)*\s+<\/body>/gi)
+  // let ifArr = html[0].match(/<#if(\S|\s(?!(<#if)))*<\/#if>/gi);
+  // // let ifArr = html[0].match(/<#if(\s|\S)*(.*)(\s|\S)*<\/#if>/gi);
+  // // console.log(ifArr, ifArr.length)
+  // ifArr.forEach((string, index) => {
+  //   ifArr[index] = string.substring(0, string.indexOf('</#if>') + 6)
+  // });
+  // // console.log(ifArr)
+  // ifArr.forEach(item => {
+  //   console.log(ftlContent.match(new RegExp(item, 'gmi')));
+  // })
+  html = html[0]
+  html = html.replace(/<\/#if>/gim, '</fragment>');
+  html = html.replace(/<\/#list>/gim, '</fragment>');
+  html = html.replace(/<#else>/gim, '</fragment><fragment v-else>');
+  // let ifTags = html[0].match(/<#if(\S|\s(?!(<?!\(d+)|>?!\(d+))))*>/gi);
+  // let ifTags = html.match(/<#if(\S|(\s?!(<(?!(\d+)))))*>/gi);
+  // let ifTags = html.match(/<#if(\S|\s(?!(<)))*>/gim);
+  html = html.replace(/<#if(\S|\s(?!(<)))*>/gim, function (math) {
+    // console.log(math)
+    return '<fragment v-if="' + math.substring(5, math.length - 1) + '">'
+  })
+  // console.log(ifTags, ifTags.length)
+
+
+  // let listTags = html.match(/<#list\s(\S*)\sas\s(\S*)>/gim);
+  // console.log(listTags, listTags.length)
+  html = html.replace(/<#list\s(\S*)\sas\s(\S*)>/gim, '<fragment v-for="($2,index) in $1" :key="index">')
+
+  vueTemplate = vueTemplate.replace('ht', html.substring(5, html.length - 7));
+  toVueFile()
+}
