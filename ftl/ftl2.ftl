@@ -150,9 +150,9 @@
                         <#list latestInfomationList as info>
                             <#if info_index<4>
                                 <#if info.smallPic??>
-                                    <li><a href="/information/detail?id=${info.id}" target="_blank"><img src="${info.smallPic!}">${info.title!}</a></li>
+                                    <li><a href="/information/detail?id=${info.id}" target="_blank"><img src="${info.smallPic!}">${info.title}</a></li>
                                 <#else>
-                                    <li><a href="/information/detail?id=${info.id}" target="_blank">
+                                    <li><a href="/information/detail?id=${info.id}&sss=${asdf}" target="_blank">
                                             <img <#if info.smallPic?has_content>
                                                 src="${info.smallPic!}"
                                             <#else>

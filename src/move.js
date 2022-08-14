@@ -61,6 +61,21 @@ function moveHtml() {
 
   // let listTags = html.match(/<#list\s(\S*)\sas\s(\S*)>/gim);
   // console.log(listTags, listTags.length)
+  // 解析${}
+  // tmArr = html.match(/(\s)(\w+)=\"((\S(?!>))*)\$\{([\w.]+)\!?\}/gmi);
+  // tmArr = html.match(/(\s)(\w+)=\"\$\{([\w.]+)\!?\}/gmi);
+  // console.log(tmArr, tmArr.length);
+  // 标签内不携带字符模板；
+  html = html.replace(/(\s)(\w+)=\"\$\{([\w.]+)\!?\}/gmi, "$1:$2=" + "'$3'")
+  // 标签内携带字符模板；
+  html = html.replace(/(\s)(\w+)=\"((\S(?!>))*)\$\{([\w.]+)\!?\}/gmi, "$1:$2=" + "\"'$3" + "'" + "+ $5")
+  // 标签内多个query属性；
+  tmArr = html.match(/\$\{([\w.]+)\!?\}\&/gmi);
+  console.log(tmArr, tmArr.length);
+  html = html.replace(/\$\{([\w.]+)\!?\}\&/gmi, "'+$1+'")
+  // 非标签内模板；
+  html = html.replace(/(>|\s)\$\{([\w.]+)\!?\}/gmi, '$1{{$2}}');
+
   html = html.replace(/<#list\s(\S*)\sas\s(\S*)>/gim, '<fragment v-for="($2,index) in $1" :key="index">')
 
   vueTemplate = vueTemplate.replace('ht', html.substring(5, html.length - 7));
