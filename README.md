@@ -1,6 +1,8 @@
 # ftl2vue
 translate ftl file to vue mode.
-if theres some warn or error, you should add try catch in the index.js
+
+> TIPS:if theres some warn or error, you should add try catch in the index.js
+
 # 1、put your ftl files to the folder ftl;
 
 # 2、 open your teminal & input
