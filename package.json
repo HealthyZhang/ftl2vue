@@ -4,12 +4,14 @@
   "description": "translate ftl file 2 vue template",
   "main": "index.js",
   "scripts": {
-    "dev": "node ./src/index.js",
+    "dev": "node ./src/index_old.js",
+    "build": "node ./src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "healty",
   "license": "MIT",
   "dependencies": {
-    "fs-extra": "^10.1.0"
+    "fs-extra": "^10.1.0",
+    "node-html-parser": "^6.1.12"
   }
 }

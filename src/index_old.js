@@ -1,16 +1,10 @@
 const path = require('path');
-const fse = require('fs-extra'); 
-const {parse} = require('node-html-parser');
+const fse = require('fs-extra');  
 
-
-let htmlRoot; //parse后的html
 let ftlPath = path.resolve(__dirname, '../ftl');
-let vuePath; //转换后的vue文件路径；
-// vue模板变量；
-let vueTemplate, vueScript, vueStyle;
-// ftl文件内容；
-let ftlContent;
 
+// vue模板变量；
+let ftlContent, vueContent, vueTemplate, vueScript, vueStyle;
 
 readFiles(ftlPath)
 
@@ -32,42 +26,17 @@ function readFiles(filePath) {
             var isFile = stats.isFile(); //是文件
             var isDir = stats.isDirectory(); //是文件夹
             if (isFile) {
-              // 初始化vue页面模板；
-              initVueTemplate();
-              // 文件转换后的新路径；
-              vuePath = filedir.replace(/\\ftl\\/, '\\dist\\')
-              vuePath = vuePath.replace(/\.ftl/, '\.vue')
-              // ftl文件内的字符串内容；
+              createVueTemplate()
+
+              // console.log(filedir); // 读取文件内容
               ftlContent = fse.readFileSync(filedir, 'utf-8');
-              // node-html-parse;
-              let htmlRoot = parse(ftlContent);
-              // console.log('htmlRoot:', htmlRoot.toString()); //转为html结构；
-              // 获取script链接及内容；
-              let scriptArr = htmlRoot.getElementsByTagName("script");
-              // 获取script链接及内容；
-              let linkArr = htmlRoot.getElementsByTagName("link");
-              // style标签内容；
-              let styleArr = htmlRoot.getElementsByTagName("style");
-              // 移除document中的style和script；
-              styleArr.forEach(item =>  item.remove())
-              scriptArr.forEach(item =>  item.remove())
-              // 获取title；
-              let title;
-              let titleHtml = htmlRoot.querySelector("title");
-              if(titleHtml) {
-                title = titleHtml.innerText;
-              }
-              /**
-               * include的component逻辑略过；
-               */
-              let bodyHtml = htmlRoot.querySelector("body");
-              console.log('bodyHtml:', bodyHtml.toString());
-              
-              
-              exegesis()
-              moveHtml()
-              moveStyle()
-              moveScript()
+              // console.log(content); 
+              let vuePath = filedir.replace(/\\ftl\\/, '\\dist\\')
+              vuePath = vuePath.replace(/\.ftl/, '\.vue')
+              exegesis(vuePath)
+              moveHtml(vuePath)
+              moveStyle(vuePath)
+              moveScript(vuePath)
             }
             if (isDir) {
               readFiles(filedir); //递归，如果是文件夹，就继续遍历该文件夹下面的文件
@@ -79,7 +48,7 @@ function readFiles(filePath) {
   });
 }
 // HTML 修改，待扩展；
-function moveHtml() {
+function moveHtml(vuePath) {
   let html = ftlContent.match(/<body(\d|\D)*\s+<\/body>/gi);
   try {
     html = html[0]
@@ -117,7 +86,7 @@ function moveHtml() {
   }
 }
 
-function addData(html) {
+function addData(html, vuePath) {
   dataArr = html.match(/\$\{([\w.]+)\!?(\?c)?\}/gmi);
   let dt = '';
   try {
@@ -130,8 +99,8 @@ function addData(html) {
   }
 
 }
-// 转存为vue文件；
-function toVueFile() {
+
+function toVueFile(vuePath) {
   let content = vueTemplate + vueScript + vueStyle;
   fse.outputFile(vuePath, content).then(res => {
     console.log('outPutSuccess!', res)
@@ -140,7 +109,7 @@ function toVueFile() {
   })
 }
 // 调出js语句；
-function moveScript() {
+function moveScript(vuePath) {
   try {
     let scriptArr1 = ftlContent.match(/<script>(\S|\s(?!(<script|src)))*<\/script>/g);
     let mtd1 = '';
@@ -154,7 +123,7 @@ function moveScript() {
       mtd2 += string.substring(30, string.length - 9)
     });
     vueScript = vueScript.replace(/mtd2/g, mtd2)
-    toVueFile()
+    toVueFile(vuePath)
   } catch (e) {
     console.log('moveScriptErr;', e, vuePath)
   }
@@ -176,8 +145,8 @@ function moveStyle(vuePath) {
   }
 }
 
-// 初始化vue基础模板；
-function initVueTemplate() {
+// 创建vue基础模板；
+function createVueTemplate() {
   vueTemplate = '<template>' +
     '\n' +
     '  <div class="">' +
@@ -226,7 +195,7 @@ function initVueTemplate() {
     ' </style>'
 }
 
-// 去除#井号开头的注释；
+// 修改注释；
 function exegesis() {
-  ftlContent = ftlContent.replace(/<#--(\S|\s(?!(<#--|<!--)))*-->/gim, '')
+  ftlContent = ftlContent.replace(/<#--/g, '<!--')
 }
