@@ -12,3 +12,4 @@ selenium-debug.log
 .idea/workspace.xml
 .vscode/
 /dist
+/temporary

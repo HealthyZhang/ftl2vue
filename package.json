@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node ./src/index_old.js",
     "build": "node ./src/index.js",
+    "component": "node ./src/component.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "healty",

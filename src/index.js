@@ -1,6 +1,7 @@
 const path = require('path');
-const fse = require('fs-extra'); 
-const {parse} = require('node-html-parser');
+const fse = require('fs-extra');
+const { parse } = require('node-html-parser');
+const { clearTimeout } = require('timers');
 
 
 let htmlRoot; //parse后的html
@@ -10,7 +11,15 @@ let vuePath; //转换后的vue文件路径；
 let vueTemplate, vueScript, vueStyle;
 // ftl文件内容；
 let ftlContent;
-
+/**
+ * TODO 是否添加日志功能？
+ */
+let logPath = path.resolve(__dirname, '../log');
+let logContent,
+  fileCount = 0,
+  successCount = 0,
+  failCount = 0,
+  timer = null;
 
 readFiles(ftlPath)
 
@@ -32,42 +41,60 @@ function readFiles(filePath) {
             var isFile = stats.isFile(); //是文件
             var isDir = stats.isDirectory(); //是文件夹
             if (isFile) {
-              // 初始化vue页面模板；
-              initVueTemplate();
-              // 文件转换后的新路径；
-              vuePath = filedir.replace(/\\ftl\\/, '\\dist\\')
-              vuePath = vuePath.replace(/\.ftl/, '\.vue')
-              // ftl文件内的字符串内容；
-              ftlContent = fse.readFileSync(filedir, 'utf-8');
-              // node-html-parse;
-              let htmlRoot = parse(ftlContent);
-              // console.log('htmlRoot:', htmlRoot.toString()); //转为html结构；
-              // 获取script链接及内容；
-              let scriptArr = htmlRoot.getElementsByTagName("script");
-              // 获取script链接及内容；
-              let linkArr = htmlRoot.getElementsByTagName("link");
-              // style标签内容；
-              let styleArr = htmlRoot.getElementsByTagName("style");
-              // 移除document中的style和script；
-              styleArr.forEach(item =>  item.remove())
-              scriptArr.forEach(item =>  item.remove())
-              // 获取title；
-              let title;
-              let titleHtml = htmlRoot.querySelector("title");
-              if(titleHtml) {
-                title = titleHtml.innerText;
+              try {
+                // *初始化vue页面模板；
+                initVueTemplate();
+                // *文件转换后的新路径；
+                vuePath = filedir.replace(/\\ftl\\/, '\\dist\\')
+                vuePath = vuePath.replace(/\.ftl/, '\.vue')
+                // ftl文件内的字符串内容；
+                ftlContent = fse.readFileSync(filedir, 'utf-8');
+                // *去掉注释；
+                exegesis()
+                // node-html-parse;
+                let htmlRoot = parse(ftlContent);
+                // console.log('htmlRoot:', htmlRoot.toString()); //转为html结构；
+                // *获取script链接及内容；
+                let scriptArr = htmlRoot.getElementsByTagName("script");
+                // 获取script链接及内容；
+                let linkArr = htmlRoot.getElementsByTagName("link");
+                // *style标签内容；
+                let styleArr = htmlRoot.getElementsByTagName("style");
+                // *移除document中的style和script；
+                styleArr.forEach(item => item.remove())
+                scriptArr.forEach(item => item.remove())
+                // *获取title；
+                let title;
+                let titleHtml = htmlRoot.querySelector("title");
+                if (titleHtml) {
+                  title = titleHtml.innerText;
+                }
+                // *修改title；
+                changeTitle(title);
+                /**
+                 * TODO include的component逻辑略过；
+                 */
+
+                let bodyHtml = htmlRoot.querySelector("body");
+                // if (!bodyHtml) throw '未查询到body标签';
+                if (!bodyHtml) {
+                  dealWithBody(htmlRoot);
+                } else {
+                  dealWithBody(bodyHtml.innerHTML);
+                }
+                addMethod(scriptArr);
+                addStyle(styleArr, linkArr);
+                fileCount++;
+                toVueFile();
+                /** 日志相关 */
+                printLog();
+              } catch (err) {
+                /* TODO 无body标签的情况；另行处理；*/
+                console.log('流程错误：', err);
+                console.log('流程错误路径：', vuePath);
+                failCount++;
+                printLog();
               }
-              /**
-               * include的component逻辑略过；
-               */
-              let bodyHtml = htmlRoot.querySelector("body");
-              console.log('bodyHtml:', bodyHtml.toString());
-              
-              
-              exegesis()
-              moveHtml()
-              moveStyle()
-              moveScript()
             }
             if (isDir) {
               readFiles(filedir); //递归，如果是文件夹，就继续遍历该文件夹下面的文件
@@ -77,103 +104,6 @@ function readFiles(filePath) {
       });
     }
   });
-}
-// HTML 修改，待扩展；
-function moveHtml() {
-  let html = ftlContent.match(/<body(\d|\D)*\s+<\/body>/gi);
-  try {
-    html = html[0]
-    addData(html, vuePath)
-    // // 替换if语句
-    html = html.replace(/<\/#if>/gim, '</fragment>');
-    html = html.replace(/<#else>/gim, '</fragment><fragment v-else>');
-
-    html = html.replace(/<#if(\S|\s(?!(<)))*>/gim, function (math) {
-      return '<fragment v-if="' + math.substring(5, math.length - 1) + '">'
-    })
-
-    html = html.replace(/<#elseif(\S|\s(?!(<)))*>/gim, function (math) {
-      return '</fragment><fragment v-else-if="' + math.substring(8, math.length - 1) + '">'
-    })
-    // 替换for循环；
-    html = html.replace(/<\/#list>/gim, '</fragment>');
-    html = html.replace(/<#list\s(\S*)\sas\s(\S*)>/gim, '<fragment v-for="($2,index) in $1" :key="index">')
-
-
-    // 解析${} 
-    // 标签内不携带字符的模板；
-    html = html.replace(/(\s)(\w+)=\"\$\{([\w.]+)\!?\}/gmi, "$1:$2=\"" + "$3")
-    // 标签内携带字符模板；
-    html = html.replace(/(\s)(\w+)=\"((\S(?!>))*)\$\{([\w.]+)\!?(\?c)?\}/gmi, "$1:$2=" + "\"'$3" + "'" + "+ $5")
-    // 标签内多个query属性； 
-    html = html.replace(/\$\{([\w.]+)\!?(\?c)?\}\&/gmi, "'+$1+'")
-    // 非标签内模板；
-    html = html.replace(/(>|\s)\$\{([\w.]+)\!?(\?c)?\}/gmi, '$1{{$2}}');
-    vueTemplate = vueTemplate.replace('ht', html.substring(5, html.length - 7));
-
-  } catch (e) {
-    html = ''
-    console.log('moveHtmlError:', e, vuePath)
-  }
-}
-
-function addData(html) {
-  dataArr = html.match(/\$\{([\w.]+)\!?(\?c)?\}/gmi);
-  let dt = '';
-  try {
-    dataArr && dataArr.forEach(item => {
-      dt += item.replace(/(\$\{)|(\!?\})|((\?c)?\})/gim, '').split('.')[0] + ": '',"
-    })
-    vueScript = vueScript.replace('dt', dt)
-  } catch (e) {
-    console.log('addDataerr:', e, vuePath)
-  }
-
-}
-// 转存为vue文件；
-function toVueFile() {
-  let content = vueTemplate + vueScript + vueStyle;
-  fse.outputFile(vuePath, content).then(res => {
-    console.log('outPutSuccess!', res)
-  }).catch(err => {
-    console.log('outPFial:', err, vuePath)
-  })
-}
-// 调出js语句；
-function moveScript() {
-  try {
-    let scriptArr1 = ftlContent.match(/<script>(\S|\s(?!(<script|src)))*<\/script>/g);
-    let mtd1 = '';
-    scriptArr1 && scriptArr1.forEach(string => {
-      mtd1 += string.substring(8, string.length - 9)
-    });
-    vueScript = vueScript.replace(/mtd1/g, mtd1)
-    let scriptArr2 = ftlContent.match(/<script\stype(\S|\s(?!(<script|src)))*<\/script>/g);
-    let mtd2 = ''
-    scriptArr2 && scriptArr2.forEach(string => {
-      mtd2 += string.substring(30, string.length - 9)
-    });
-    vueScript = vueScript.replace(/mtd2/g, mtd2)
-    toVueFile()
-  } catch (e) {
-    console.log('moveScriptErr;', e, vuePath)
-  }
-}
-
-// 拼接样式；
-function moveStyle(vuePath) {
-  let ftlStyleArr = ftlContent.match(/<style(\S|(\s(?!<style)))*<\/style>/g)
-  let styleString;
-  try {
-    styleString = ftlStyleArr.join('\r\n');
-    styleString = styleString.replace(/<style>|<\/style>|<style type="text\/css">/g, '')
-    vueStyle = vueStyle.replace('stl', styleString);
-  } catch (e) {
-    console.log('StyleError,样式处理错误：', e);
-    console.log('错误文件路径：', vuePath);
-    vueStyle = vueStyle.replace('stl', '\/* 样式未处理 *\/ ');
-    // console.log('moveStyleerr', vuePath);
-  }
 }
 
 // 初始化vue基础模板；
@@ -204,7 +134,7 @@ function initVueTemplate() {
     ' ' + '\n' +
     '     },' + '\n' +
     '     mounted() {' + '\n' +
-    ' ' + '\n' +
+    ' tit0 ' + '\n' +
     '     },' + '\n' +
     '     beforeDestory() {' + '\n' +
     ' ' + '\n' +
@@ -214,19 +144,172 @@ function initVueTemplate() {
     '           mtd1' + '\n' +
     '        },' + '\n' +
     '       fn2(){' + '\n' +
-    '           mtd2' + '\n' +
+    '           //mtd2' + '\n' +
     '        },' + '\n' +
     '     }' + '\n' +
     '   }' + '\n' +
     ' </script>' + '\n' +
     '';
   vueStyle = ' <style scoped>' + '\n' +
+    'impt2' + '\n' +
     ' ' + '\n' +
     ' stl' + '\n' +
     ' </style>'
 }
 
-// 去除#井号开头的注释；
+//* 去除#井号开头的注释；
 function exegesis() {
   ftlContent = ftlContent.replace(/<#--(\S|\s(?!(<#--|<!--)))*-->/gim, '')
 }
+
+//* 修改document.title
+function changeTitle(title) {
+  if (title) {
+    vueScript = vueScript.replace("tit0", "document.title = title;")
+  } else {
+    vueScript = vueScript.replace("tit0", "/* title未修改 */")
+  }
+}
+/** 处理body标签内内容，并替换 */
+function dealWithBody(body) {
+  let bodyString = body.toString();
+  add2Data(bodyString);
+  let html = bodyString;
+  try {
+
+    /** 替换if语句*/
+    html = html.replace(/<\/#if>/gim, '</fragment>');
+    html = html.replace(/<#else>/gim, '</fragment><fragment v-else>');
+
+    html = html.replace(/<#if(\S|\s(?!(<)))*>/gim, function (math) {
+      return '<fragment v-if="' + math.substring(5, math.length - 1) + '">'
+    })
+
+    html = html.replace(/<#elseif(\S|\s(?!(<)))*>/gim, function (math) {
+      return '</fragment><fragment v-else-if="' + math.substring(8, math.length - 1) + '">'
+    })
+
+    /** 替换for循环； */
+    html = html.replace(/<\/#list>/gim, '</fragment>');
+    html = html.replace(/<#list\s(\S*)\sas\s(\S*)>/gim, '<fragment v-for="($2,index) in $1" :key="index">')
+
+
+    /**
+     * 解析${} 
+     * 标签内不携带字符的模板；
+     */
+    html = html.replace(/(\s)(\w+)=\"\$\{([\w.]+)\!?\}/gmi, "$1:$2=\"" + "$3")
+
+    /** 标签内携带字符模板； */
+    html = html.replace(/(\s)(\w+)=\"((\S(?!>))*)\$\{([\w.]+)\!?(\?c)?\}/gmi, "$1:$2=" + "\"'$3" + "'" + "+ $5")
+    /** 标签内多个query属性； */
+    html = html.replace(/\$\{([\w.]+)\!?(\?c)?\}\&/gmi, "'+$1+'")
+
+    /** 非标签内模板 */
+    html = html.replace(/(>|\s)\$\{([\w.]+)\!?(\?c)?\}/gmi, '$1{{$2}}');
+    vueTemplate = vueTemplate.replace('ht', html);
+
+  } catch (err) {
+    console.log('bodyHtml解析错误:', e)
+    console.log('bodyHtml解析错误文件:', vuePath)
+  }
+}
+
+/** 将标签内意思data的字段放入到data中 */
+function add2Data(bodyString) {
+  try {
+    dataArr = bodyString.match(/\$\{([\w.]+)\!?(\?c)?\}/gmi);
+    let dt = '';
+    dataArr && dataArr.forEach(item => {
+      dt += item.replace(/(\$\{)|(\!?\})|((\?c)?\})/gim, '').split('.')[0] + ": '',"
+    })
+    vueScript = vueScript.replace('dt', dt)
+  } catch (e) {
+    console.log('提取data错误:', e)
+    console.log('提取data错误文件:', vuePath)
+    vueScript = vueScript.replace('dt', "/** data未提取 */")
+
+  }
+}
+/** 将js代买放入到method中 */
+function addMethod(scriptArr = []) {
+  let impts = ''; /** 导入js文件的路径 */
+  let mtd1 = '';
+  scriptArr.forEach(item => {
+    let src = item.getAttribute("src");
+    let innerHTML = item.innerHTML;
+    if (src) {
+      impts += `import \'${src}\';\n`;
+    } else if (innerHTML) {
+      mtd1 += innerHTML + '\n';
+    } else {
+      /*TODO */
+    }
+  })
+  if (!scriptArr.length) {
+    impts = '//无需导入的js文件;';
+    mtd1 = '//无js代码;';
+  }
+  vueScript = vueScript.replace('impts', impts);
+  vueScript = vueScript.replace('mtd1', mtd1);
+}
+
+/** 将css代码放入到对应为止 */
+function addStyle(styleArr = [], linkArr = []) {
+  let stl = '';
+  let impt2 = '';
+  /** @import url('./external.css'); */
+  linkArr.forEach(item => {
+    let href = item.getAttribute("href");
+    if (href) {
+      impt2 += `@import url(\'${href}\');\n`
+    } else {
+      impt2 += '/* 导入有空值 */'
+    }
+  })
+  if (!linkArr.length) {
+    impt2 = "/* 无link */\n"
+  }
+  vueStyle = vueStyle.replace("impt2", impt2)
+  styleArr.forEach(item => {
+    let innerHTML = item.innerHTML;
+    if (innerHTML) {
+      stl += innerHTML + '\n';
+    } else {
+      stl += '/* style有空值 */\n';
+    }
+  })
+  if (!styleArr.length) {
+    stl = "/* 无style */\n"
+  }
+  vueStyle = vueStyle.replace("stl", stl)
+}
+
+/** 转存为vue文件； */
+function toVueFile() {
+  let content = vueTemplate + vueScript + vueStyle;
+  fse.outputFile(vuePath, content).then(res => {
+    // console.log('outPutSuccess!', res);
+    successCount++;
+  }).catch(err => {
+    console.log('outPFial:', err, vuePath);
+    failCount++;
+  })
+}
+/** 打印log */
+function printLog() {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    let content =
+      `总文件数量：${fileCount}\n
+    成功数量：${successCount}\n
+    失败数量：${failCount}`
+    let filePath = logPath + '\\' + Date.now() + '\.txt';
+    fse.outputFile(filePath, content).then(res => {
+      console.log('printLogSuccess!', res)
+    }).catch(err => {
+      console.log('printLogFial:', err)
+    })
+  }, 3000)
+}
+
