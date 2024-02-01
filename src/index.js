@@ -12,14 +12,15 @@ let vueTemplate, vueScript, vueStyle;
 // ftl文件内容；
 let ftlContent;
 /**
- * TODO 是否添加日志功能？
+ * 日志功能
  */
 let logPath = path.resolve(__dirname, '../log');
-let logContent,
+let logContent = '',
   fileCount = 0,
   successCount = 0,
   failCount = 0,
   timer = null;
+/** 日志结束 */
 
 readFiles(ftlPath)
 
@@ -28,6 +29,7 @@ function readFiles(filePath) {
   fse.readdir(filePath, function (err, files) {
     if (err) {
       console.warn("文件读取错误！错误内容：", err)
+      logContent += `文件读取错误：${filePath} \n`;
     } else {
       //遍历读取到的文件列表
       files.forEach(function (filename) {
@@ -37,6 +39,7 @@ function readFiles(filePath) {
         fse.stat(filedir, function (eror, stats) {
           if (eror) {
             console.warn('获取文件stats失败');
+            logContent += `获取文件stats失败:${filedir} \n`;
           } else {
             var isFile = stats.isFile(); //是文件
             var isDir = stats.isDirectory(); //是文件夹
@@ -71,9 +74,6 @@ function readFiles(filePath) {
                 }
                 // *修改title；
                 changeTitle(title);
-                /**
-                 * TODO include的component逻辑略过；
-                 */
 
                 let bodyHtml = htmlRoot.querySelector("body");
                 // if (!bodyHtml) throw '未查询到body标签';
@@ -89,9 +89,10 @@ function readFiles(filePath) {
                 /** 日志相关 */
                 printLog();
               } catch (err) {
-                /* TODO 无body标签的情况；另行处理；*/
                 console.log('流程错误：', err);
                 console.log('流程错误路径：', vuePath);
+                logContent += `流程错误：:${err} \n`;
+                logContent += `流程错误路径：:${vuePath} \n`;
                 failCount++;
                 printLog();
               }
@@ -120,6 +121,7 @@ function initVueTemplate() {
     '';
   vueScript = '<script>' + '\n' +
     'impts' + '\n' +
+    'impt1' + '\n' +
     '\n' +
     '  export default {' + '\n' +
     '    components:  {' + '\n' +
@@ -173,6 +175,11 @@ function changeTitle(title) {
 /** 处理body标签内内容，并替换 */
 function dealWithBody(body) {
   let bodyString = body.toString();
+  /**
+   * TODO include的component逻辑略过；
+   * 
+   */
+  bodyString = dealWithComponents(bodyString);
   add2Data(bodyString);
   let html = bodyString;
   try {
@@ -212,6 +219,8 @@ function dealWithBody(body) {
   } catch (err) {
     console.log('bodyHtml解析错误:', e)
     console.log('bodyHtml解析错误文件:', vuePath)
+    logContent += `bodyHtml解析错误:${e} \n`;
+    logContent += `bodyHtml解析错误文件:${vuePath} \n`;
   }
 }
 
@@ -221,14 +230,18 @@ function add2Data(bodyString) {
     dataArr = bodyString.match(/\$\{([\w.]+)\!?(\?c)?\}/gmi);
     let dt = '';
     dataArr && dataArr.forEach(item => {
-      dt += item.replace(/(\$\{)|(\!?\})|((\?c)?\})/gim, '').split('.')[0] + ": '',"
+      dt += item.replace(/(\$\{)|(\!?\})|((\?c)?\})/gim, '').split('.')[0] + ": '',\n"
     })
+    if (dt) {
+      dt = dt.slice(0, -2);
+    }
     vueScript = vueScript.replace('dt', dt)
   } catch (e) {
     console.log('提取data错误:', e)
     console.log('提取data错误文件:', vuePath)
     vueScript = vueScript.replace('dt', "/** data未提取 */")
-
+    logContent += `提取data错误:${e} \n`;
+    logContent += `提取data错误文件:${vuePath} \n`;
   }
 }
 /** 将js代买放入到method中 */
@@ -243,7 +256,7 @@ function addMethod(scriptArr = []) {
     } else if (innerHTML) {
       mtd1 += innerHTML + '\n';
     } else {
-      /*TODO */
+      impts += `/* 出现空script标签 */\n`;
     }
   })
   if (!scriptArr.length) {
@@ -293,6 +306,8 @@ function toVueFile() {
     successCount++;
   }).catch(err => {
     console.log('outPFial:', err, vuePath);
+    logContent += `转存为vue文件；失败:${err} \n`;
+    logContent += `转存为vue文件失败路径:${vuePath} \n`;
     failCount++;
   })
 }
@@ -303,7 +318,8 @@ function printLog() {
     let content =
       `总文件数量：${fileCount}\n
     成功数量：${successCount}\n
-    失败数量：${failCount}`
+    失败数量：${failCount}\n
+    ${logContent}`
     let filePath = logPath + '\\' + Date.now() + '\.txt';
     fse.outputFile(filePath, content).then(res => {
       console.log('printLogSuccess!', res)
@@ -312,4 +328,50 @@ function printLog() {
     })
   }, 3000)
 }
+
+/** 处理组件导入 */
+function dealWithComponents(bodyString) {
+  const componentArr = bodyString.match(/<#include(\S|\s(?!(<)))*>/gim);
+  let impt1 = '';/** 承载导入的组件路径 */
+  let cmpts = ''; /** 组件名称 */
+  componentArr.forEach(item => {
+    try {
+      let fileName = item.match(/\/((\S|\s)(?!\/))*\.ftl/gim)[0].replace(/\/|\.ftl/gim, '');
+      // let path = item.split(" ")[1].replace(".ftl", ".vue");
+      let path = item.match(/\/((\S|\s))*\.ftl/gim)[0].replace(".ftl", ".vue");
+      let camelName = toUpperCamelCase(fileName);
+      let componentName = `<${camelName} />`;
+      bodyString = bodyString.replace(item, componentName);
+      /** 避免重复引入 */
+      if (impt1.includes(path)) return;
+      cmpts += camelName + ',\n';
+      impt1 += `import ${camelName} from \'${path}\';\n`;
+    } catch (err) {
+      console.log('组件转换错误：', err);
+      console.log('组件转换错误文件路径：', vuePath);
+      logContent += `组件转换错误：:${err} \n`;
+      logContent += `组件转换错误文件路径：:${vuePath} \n`;
+    }
+  })
+  if (cmpts.length) {
+    cmpts = cmpts.slice(0, -2);
+  }
+  vueScript = vueScript.replace("impt1", impt1);
+  vueScript = vueScript.replace("cmpts", cmpts);
+  return bodyString;
+}
+/** 转驼峰 */
+function toUpperCamelCase(str) {
+  let newStr = str.replace(/[-_\s]+(\w)/g, function (match, letter) {
+    return letter.toUpperCase();
+  });
+  return newStr.replace(/^\w/, a => {
+    return a.toUpperCase()
+  })
+}
+
+/**
+ * var input = "hello-world_test";
+ * console.log(toUpperCamelCase(input)); // HelloWorldTest
+ */
 
