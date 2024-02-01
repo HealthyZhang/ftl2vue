@@ -4,14 +4,10 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>${title_!}-${title}</title>
-    <link href="/css/index_bk.css" rel="stylesheet" type="text/css"/>
-    <link href="/css/jquery.bxslider.css" rel="stylesheet" type="text/css">
+     
     <script src="/js/jquery-1.9.1.js"></script>
-    <link href="/css/index_hx.css" rel="stylesheet" type="text/css"/>
-    <link href="/css/index2_hx.css" rel="stylesheet" type="text/css"/>
-    <script type="text/javascript" src="/js/lib/layer/layer.js"></script>
-    <script type="text/javascript" src="/js/laypage/laypage.js"></script>
-    <script type="text/javascript" src="/js/common.js"></script>
+    <link href="/css/2222.css" rel="stylesheet" type="text/css"/>
+     
     <style>
         .maptab {
             margin-top: 30px;
@@ -38,23 +34,12 @@
 <#if typego?? && typego == 'zh'>
     <link href="/css/index_zhihui.css" rel="stylesheet" type="text/css" />
     <div class="cas_head" id="cas_head">
-        <#include "/public/topnav_hx.ftl">
-        <#include "/public/topnav_hx.ftl">
-        <#include "/public/topnav_hx.ftl">
-        <#include "/public/headnav_hx.ftl">
-        <#include "/public/headnav_hx.ftl">
-        <#include "/public/headnav_hx.ftl">
-        <#include "/public/headnav_hx.ftl">
+        <#include "/public/asd.ftl">
+         
     </div>
 <#else>
     <div class="cas_head" id="cas_head">
-        <#include "/public/topnav.ftl">
-        <#include "/public/topnav.ftl">
-        <#include "/public/topnav.ftl">
-        <#include "/public/headnav_shop.ftl">
-        <#include "/public/headnav_shop.ftl">
-        <#include "/public/headnav_shop.ftl">
-        <#include "/public/headnav_shop.ftl">
+         
     </div>
 </#if>
 <!--头部 结束-->
@@ -100,39 +85,7 @@
 <script>
     // 切换分类
     $(function () {
-        $('.blk-list-tit li').on('click', function () {
-            $(this).addClass('active').siblings('li').removeClass('active');
-        });
-        // 头部选中
-        $('.classify-title ul li a').on('click', function () {
-            $(this).addClass('active').siblings('li').removeClass('active');
-        });
-
-        $('.product-list-more').on('click', function () {
-            var text = $(this).text();
-            var ul = $(this).closest('div').find('ul');
-            if (text == "更多") {
-                $(this).text("收起").addClass('up');
-                ul.css("height", "auto");
-            } else {
-                $(this).text("更多").removeClass('up');
-                ul.css("height", "54px");
-            }
-        });
-
-        $(document).on('click', '.list-head-1.selected-classify .close', function () {
-            $(this).closest('li').remove();
-        });
-
-        $('.list-head-1').not('.selected-classify').find('li').on('click', function () {
-            var text = $(this).text();
-            var li = $('<li><a href="javascript:;">' + text + '<i class="close">X</i></a></li>');
-            li.appendTo($('.selected-classify ul'));
-        });
-
-        $('.list-head-1.selected-classify .delete-all').on('click', function () {
-            $(this).closest('.selected-classify').find('li').remove();
-        });
+        
 
     });
 </script>
