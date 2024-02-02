@@ -3,18 +3,19 @@ const fse = require('fs-extra');
 const { parse } = require('node-html-parser');
 const { clearTimeout } = require('timers');
 
+const ftlPath = path.resolve(__dirname, '../ftl');
+const logPath = path.resolve(__dirname, '../logs');
+/** vue模板变量； */
+let vueTemplate, vueScript, vueStyle, routerContent;
 
 let htmlRoot; //parse后的html
-let ftlPath = path.resolve(__dirname, '../ftl');
 let vuePath; //转换后的vue文件路径；
-// vue模板变量；
-let vueTemplate, vueScript, vueStyle;
+
 // ftl文件内容；
 let ftlContent;
 /**
  * 日志功能
  */
-let logPath = path.resolve(__dirname, '../log');
 let logContent = '',
   fileCount = 0,
   successCount = 0,
@@ -345,7 +346,7 @@ function dealWithComponents(bodyString) {
       /** 避免重复引入 */
       if (impt1.includes(path)) return;
       cmpts += camelName + ',\n';
-      impt1 += `import ${camelName} from \'${path}\';\n`;
+      impt1 += `import ${camelName} from \'@/components${path}\';\n`;
     } catch (err) {
       console.log('组件转换错误：', err);
       console.log('组件转换错误文件路径：', vuePath);
@@ -360,18 +361,30 @@ function dealWithComponents(bodyString) {
   vueScript = vueScript.replace("cmpts", cmpts);
   return bodyString;
 }
-/** 转驼峰 */
+/** 转大驼峰 */
 function toUpperCamelCase(str) {
-  let newStr = str.replace(/[-_\s]+(\w)/g, function (match, letter) {
-    return letter.toUpperCase();
+  // let newStr = str.replace(/[-_\s]+(\w)/g, function (match, letter) {
+  //   return letter.toUpperCase();
+  // });
+  // return newStr.replace(/^\w/, a => {
+  //   return a.toUpperCase()
+  // })
+  return str.replace(/(^\w)|[-_\s]+(\w)/gim, function (match, b, c) {
+    if (b) return b.toUpperCase();
+    if (c) return c.toUpperCase();
   });
-  return newStr.replace(/^\w/, a => {
-    return a.toUpperCase()
-  })
 }
 
 /**
  * var input = "hello-world_test";
  * console.log(toUpperCamelCase(input)); // HelloWorldTest
  */
-
+/** 创建路由文件 */
+function createRouter() {
+  // let filePath = logPath + '\\' + Date.now() + '\.txt';
+  // fse.outputFile(filePath, content).then(res => {
+  //   console.log('printLogSuccess!', res)
+  // }).catch(err => {
+  //   console.log('printLogFial:', err)
+  // })
+}

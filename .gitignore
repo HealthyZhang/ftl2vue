@@ -13,3 +13,5 @@ selenium-debug.log
 .vscode/
 /dist
 /temporary
+/logs
+/router

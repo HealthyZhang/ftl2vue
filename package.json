@@ -1,12 +1,12 @@
 {
   "name": "ftl-vue",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "translate ftl file 2 vue template",
   "main": "index.js",
   "scripts": {
     "dev": "node ./src/index_old.js",
     "build": "node ./src/index.js",
-    "component": "node ./src/component.js",
+    "go": "node ./src/go.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "healty",
