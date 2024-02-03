@@ -1,12 +1,13 @@
 # ftl2vue
-translate ftl file to vue mode (ftl to vue).
+> 将ftl格式文件转为vue格式；保留之前语法，如果使用了jq则需要在vue项目中引用jq，或者使用cdn格式导入。
  
-# 1、put your ftl files to the folder ftl;
+- ftl语法转vue语法待完善，核心逻辑在analysisBody中；
 
-# 2、 teminal 
-``` npm i ``` 
+- 转换步骤
+# 1、src同级目录创建ftl文件夹；
+
+# 2、 安装依赖；
 
 # 3、 npm run go;
 
-# 4、 tips
-> this method must install [vue-fragment](https://www.npmjs.com/package/vue-fragment); 
+
