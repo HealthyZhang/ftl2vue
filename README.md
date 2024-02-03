@@ -4,10 +4,10 @@
 - ftl语法转vue语法待完善，核心逻辑在analysisBody中；
 
 - 转换步骤
-# 1、src同级目录创建ftl文件夹；
+    - 1、src同级目录创建ftl文件夹；
 
-# 2、 安装依赖；
+    - 2、 安装依赖；
 
-# 3、 npm run go;
+    - 3、 npm run go;
 
 
